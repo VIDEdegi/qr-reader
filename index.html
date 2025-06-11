@@ -3,57 +3,124 @@
 <head>
   <meta charset="UTF-8">
   <title>QRコードリーダー</title>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 2em;
+    }
+
+    #permission-message {
+      font-size: 1.2em;
+      margin-bottom: 1em;
+      color: #555;
+    }
+
     #reader {
       width: 100%;
       max-width: 400px;
       margin: 0 auto;
+      border: 2px dashed #aaa;
+      border-radius: 8px;
+      padding: 8px;
+      background: #f9f9f9;
     }
+
     #result {
       margin-top: 1em;
-      font-size: 1.2em;
+      font-size: 1.1em;
       color: green;
       word-wrap: break-word;
+    }
+
+    button, select {
+      margin-top: 1em;
+      padding: 10px 15px;
+      font-size: 1em;
+      border-radius: 5px;
+      border: none;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
     }
   </style>
 </head>
 <body>
-  <h1>📷 QRコードリーダー</h1>
+  <div id="permission-message">このサイトはカメラへのアクセス許可が必要です。許可を求めるポップアップが表示されます。</div>
+
+  <select id="camera-select"></select>
   <div id="reader"></div>
   <div id="result"></div>
+  <button id="rescan-btn" style="display: none;">再スキャン</button>
 
   <script>
     const html5QrCode = new Html5Qrcode("reader");
+    const cameraSelect = document.getElementById("camera-select");
+    const rescanBtn = document.getElementById("rescan-btn");
+    const resultBox = document.getElementById("result");
 
-    function onScanSuccess(decodedText, decodedResult) {
-      // 読み取り成功時の処理
-      document.getElementById("result").innerText = "読み取った内容: " + decodedText;
-      html5QrCode.stop();
+    let currentCameraId = null;
+
+    function startScanner(cameraId) {
+      html5QrCode.start(
+        cameraId,
+        { fps: 10, qrbox: 250 },
+        qrCodeSuccessCallback,
+        qrCodeErrorCallback
+      ).then(() => {
+        currentCameraId = cameraId;
+      });
     }
 
-    function onScanFailure(error) {
-      // 無視してOK。精度向上のために多数回呼ばれます。
+    function qrCodeSuccessCallback(decodedText, decodedResult) {
+      html5QrCode.stop();
+      resultBox.textContent = "読み取った内容: " + decodedText;
+      rescanBtn.style.display = "inline-block";
+    }
+
+    function qrCodeErrorCallback(errorMessage) {
+      // 通常は無視してよい
+    }
+
+    function initCameraOptions(cameras) {
+      cameras.forEach(camera => {
+        const option = document.createElement("option");
+        option.value = camera.id;
+        option.text = camera.label || `カメラ ${camera.id}`;
+        cameraSelect.appendChild(option);
+      });
+
+      if (cameras.length > 0) {
+        startScanner(cameras[0].id);
+      }
     }
 
     Html5Qrcode.getCameras().then(cameras => {
       if (cameras && cameras.length) {
-        const cameraId = cameras[0].id;
-        html5QrCode.start(
-          cameraId,
-          {
-            fps: 10,
-            qrbox: 250
-          },
-          onScanSuccess,
-          onScanFailure
-        );
+        initCameraOptions(cameras);
+        cameraSelect.addEventListener("change", () => {
+          html5QrCode.stop().then(() => {
+            resultBox.textContent = "";
+            rescanBtn.style.display = "none";
+            startScanner(cameraSelect.value);
+          });
+        });
       } else {
         alert("カメラが見つかりませんでした。");
       }
     }).catch(err => {
-      console.error(err);
-      alert("カメラの初期化に失敗しました。");
+      alert("カメラアクセスに失敗しました: " + err);
+    });
+
+    rescanBtn.addEventListener("click", () => {
+      resultBox.textContent = "";
+      rescanBtn.style.display = "none";
+      startScanner(currentCameraId);
     });
   </script>
 </body>
