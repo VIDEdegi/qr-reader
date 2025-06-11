@@ -2,63 +2,59 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QRコード読み取り</title>
-  <script src="https://cdn.jsdelivr.net/npm/quagga/dist/quagga.min.js"></script>
+  <title>QRコードリーダー</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
-    #interactive.viewport {
-      position: relative;
+    #reader {
       width: 100%;
-      height: auto;
-      overflow: hidden;
+      max-width: 400px;
+      margin: 0 auto;
     }
-    #interactive.viewport > canvas,
-    #interactive.viewport > video {
-      max-width: 100%;
-      width: 100%;
+    #result {
+      margin-top: 1em;
+      font-size: 1.2em;
+      color: green;
+      word-wrap: break-word;
     }
   </style>
 </head>
 <body>
-  <div id="interactive" class="viewport"></div>
-  <script>
-    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
-      // ユーザーのカメラを取得してQRコードをスキャンする
-      Quagga.init({
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          constraints: {
-            width: { min: 640 },
-            height: { min: 480 },
-            facingMode: "environment" // 背面カメラを使用する場合は変更
-          },
-        },
-        locator: {
-          patchSize: "medium",
-          halfSample: true,
-        },
-        decoder: {
-          readers: ["qrcode_reader"]
-        },
-      }, function (err) {
-        if (err) {
-          console.log(err);
-          return;
-        }
-        Quagga.start();
-      });
+  <h1>📷 QRコードリーダー</h1>
+  <div id="reader"></div>
+  <div id="result"></div>
 
-      Quagga.onDetected(function(result) {
-        // QRコードが検出されたときの処理
-        console.log(result);
-        alert("QRコードが検出されました: " + result.codeResult.code);
-        // もし必要なら、ここで他の処理を追加する
-        Quagga.stop(); // スキャンを停止する
-      });
-    } else {
-      alert("このブラウザはカメラアクセスをサポートしていません。");
+  <script>
+    const html5QrCode = new Html5Qrcode("reader");
+
+    function onScanSuccess(decodedText, decodedResult) {
+      // 読み取り成功時の処理
+      document.getElementById("result").innerText = "読み取った内容: " + decodedText;
+      html5QrCode.stop();
     }
+
+    function onScanFailure(error) {
+      // 無視してOK。精度向上のために多数回呼ばれます。
+    }
+
+    Html5Qrcode.getCameras().then(cameras => {
+      if (cameras && cameras.length) {
+        const cameraId = cameras[0].id;
+        html5QrCode.start(
+          cameraId,
+          {
+            fps: 10,
+            qrbox: 250
+          },
+          onScanSuccess,
+          onScanFailure
+        );
+      } else {
+        alert("カメラが見つかりませんでした。");
+      }
+    }).catch(err => {
+      console.error(err);
+      alert("カメラの初期化に失敗しました。");
+    });
   </script>
 </body>
 </html>
