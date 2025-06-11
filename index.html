@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QRコード読み取り</title>
+  <script src="https://cdn.jsdelivr.net/npm/quagga/dist/quagga.min.js"></script>
+  <style>
+    #interactive.viewport {
+      position: relative;
+      width: 100%;
+      height: auto;
+      overflow: hidden;
+    }
+    #interactive.viewport > canvas,
+    #interactive.viewport > video {
+      max-width: 100%;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="interactive" class="viewport"></div>
+  <script>
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+      // ユーザーのカメラを取得してQRコードをスキャンする
+      Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          constraints: {
+            width: { min: 640 },
+            height: { min: 480 },
+            facingMode: "environment" // 背面カメラを使用する場合は変更
+          },
+        },
+        locator: {
+          patchSize: "medium",
+          halfSample: true,
+        },
+        decoder: {
+          readers: ["qrcode_reader"]
+        },
+      }, function (err) {
+        if (err) {
+          console.log(err);
+          return;
+        }
+        Quagga.start();
+      });
+
+      Quagga.onDetected(function(result) {
+        // QRコードが検出されたときの処理
+        console.log(result);
+        alert("QRコードが検出されました: " + result.codeResult.code);
+        // もし必要なら、ここで他の処理を追加する
+        Quagga.stop(); // スキャンを停止する
+      });
+    } else {
+      alert("このブラウザはカメラアクセスをサポートしていません。");
+    }
+  </script>
+</body>
+</html>
